@@ -1,17 +1,13 @@
 run:
 	@go run main.go
 
-docker:
+up:
 	@docker-compose up -d
+	@docker ps -a
 
 down:
 	@docker-compose down
+	@docker ps -a
 
-success:
-	@curl http://127.0.0.1:8080/
-
-fail:
-	@curl http://127.0.0.1:8080/fail
-
-metrics:
-	@curl http://127.0.0.1:8080/metrics
+clients:
+	go run client/main.go --requests 1000

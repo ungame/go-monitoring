@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"log"
+	"github.com/ungame/go-monitoring/api/logger"
 	"net/http"
 	"time"
 )
@@ -31,7 +31,6 @@ func Logger(next http.HandlerFunc) http.HandlerFunc {
 
 		monitor(sr.status)
 
-		// TODO: save output on database
-		log.Printf("%s %s%s %d %s\n", method, host, uri, sr.status, time.Since(start).String())
+		logger.Info("%s %s%s %d %s\n", method, host, uri, sr.status, time.Since(start).String())
 	}
 }
