@@ -10,4 +10,4 @@ down:
 	@docker ps -a
 
 clients:
-	go run client/main.go --requests 1000
+	go run client/main.go --requests 100
