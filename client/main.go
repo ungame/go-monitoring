@@ -6,23 +6,26 @@ import (
 	"fmt"
 	"github.com/ungame/go-monitoring/api/logger"
 	"github.com/ungame/go-monitoring/api/random"
+	"github.com/ungame/go-monitoring/client/pusher"
 	"net/http"
 	"sync"
 	"time"
 )
 
 const (
-	defaultConcurrent = false
-	defaultRequests   = 100
-	defaultRepeat     = 5
-	defaultDelay      = 30
+	defaultConcurrent     = false
+	defaultRequests       = 100
+	defaultRepeat         = 5
+	defaultDelay          = 30
+	defaultPushGatewayURL = "http://localhost:9091/"
 )
 
 var (
-	concurrent bool
-	requests   int
-	repeat     int
-	delay      int
+	concurrent     bool
+	requests       int
+	repeat         int
+	delay          int
+	pushGatewayURL string
 )
 
 func init() {
@@ -30,6 +33,7 @@ func init() {
 	flag.IntVar(&requests, "requests", defaultRequests, "requests per minute")
 	flag.IntVar(&repeat, "repeat", defaultRepeat, "repeat requests")
 	flag.IntVar(&delay, "delay", defaultDelay, "delay in seconds after requests")
+	flag.StringVar(&pushGatewayURL, "push_gateway_url", defaultPushGatewayURL, "prometheus push gateway url")
 	flag.Parse()
 }
 
@@ -41,7 +45,8 @@ func main() {
 
 	logger.Info("Making client requests...\n")
 	logger.Info("Concurrent=%v, Requests=%v, Repeat=%v, Delay=%v\n", concurrent, requests, repeat, delay)
-	logger.Info("Total Requests=%v\n\n", requests*repeat)
+	logger.Info("Total Requests=%v\n", requests*repeat)
+	logger.Info("Push Gateway: %s\n\n", pushGatewayURL)
 
 	var wg *sync.WaitGroup
 	if concurrent {
@@ -52,12 +57,14 @@ func main() {
 		}()
 	}
 
+	pushService := pusher.New(pushGatewayURL)
+
 	for i := 0; i < repeat; i++ {
 		if concurrent {
 			wg.Add(1)
-			go flood(requests, wg)
+			go flood(requests, pushService, wg)
 		} else {
-			flood(requests)
+			flood(requests, pushService)
 			time.Sleep(time.Second * time.Duration(delay))
 		}
 	}
@@ -65,7 +72,7 @@ func main() {
 	logger.Info("Finished clients.")
 }
 
-func flood(n int, wg ...*sync.WaitGroup) {
+func flood(n int, pushService pusher.Pusher, wg ...*sync.WaitGroup) {
 	var (
 		uri     string
 		randInt int
@@ -78,11 +85,14 @@ func flood(n int, wg ...*sync.WaitGroup) {
 		randInt = random.Int()
 		if randInt%100 == 0 {
 			uri = "/down"
+			pushService.Incr()
 		} else if randInt%2 != 0 {
 			uri = "/fail"
 		}
 		request(uri)
 	}
+
+	pushService.Push()
 
 	for _, g := range wg {
 		g.Done()

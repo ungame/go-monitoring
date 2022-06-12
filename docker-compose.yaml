@@ -20,6 +20,14 @@ services:
     depends_on:
       - webapi
 
+  prometheus-pushgateway:
+    image: prom/pushgateway
+    container_name: pushgateway
+    expose:
+      - 9091
+    ports:
+      - "9091:9091"
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -27,3 +35,4 @@ services:
       - 3000:3000
     depends_on:
       - prometheus
+      - prometheus-pushgateway
